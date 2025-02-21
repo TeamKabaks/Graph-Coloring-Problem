@@ -1,6 +1,8 @@
 import java.util.*;
 
 public class GraphColoringDP {
+    private boolean solutionFound;
+    private double executionTime;
     private int vertices;
     private List<List<Integer>> graph;
     private int[] colorArray;
@@ -51,15 +53,19 @@ public class GraphColoringDP {
         long endTime = System.nanoTime();
         
         if (result) {
+            solutionFound = true;
             System.out.println("\nSolution Exists: Color Assignment");
             for (int i = 0; i < vertices; i++) {
                 System.out.println("Vertex " + i + " -> Color " + colorArray[i]);
             }
         } else {
+            solutionFound = false;
             System.out.println("\nNo solution exists with given number of colors.");
         }
-        
+        executionTime = (endTime - startTime) / 1e6;
         System.out.printf("\nExecution Time: %.3f ms%n", (endTime - startTime) / 1e6);
+        System.out.println("Final Color Array (DP): " + Arrays.toString(colorArray));
+
         return result;
     }
 
@@ -96,6 +102,18 @@ public class GraphColoringDP {
             }
         }
         return true;
+    }
+
+    public int[] getColorArray() {
+        return colorArray;
+    }
+
+    public double getExecutionTime() {
+        return executionTime;
+    }
+
+    public boolean isSolutionFound() {
+        return solutionFound;
     }
 
     public static void main(String[] args) {
@@ -143,4 +161,6 @@ public class GraphColoringDP {
         
         scanner.close();
     }
+
+    
 }

@@ -1,6 +1,9 @@
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class GraphColoringBacktracking{
+    private double executionTime;
+    private boolean solutionFound;
     private int V;
     private int[][] graph;                                          // Adjacency matrix
     private int[] colors;
@@ -8,7 +11,7 @@ public class GraphColoringBacktracking{
     public GraphColoringBacktracking(int V, int E){
         this.V = V;
         this.colors = new int[V];
-        this.graph = new int[E][E];
+        this.graph = new int[V][V];
     }
 
     private boolean isSafe(int v, int c){
@@ -20,6 +23,20 @@ public class GraphColoringBacktracking{
 
     private boolean solveGraphColoring(int v, int m){
         if(v == V) return true;                                     // All vertices are colored
+
+        // If vertex has no edges, assign the first available color
+        boolean isDisconnected = true;
+        for (int i = 0; i < V; i++) {
+            if (graph[v][i] == 1) {
+                isDisconnected = false;
+                break;
+            }
+        }
+
+        if (isDisconnected) {
+            colors[v] = 1; // Assign any color (e.g., 1) to isolated vertices
+            return solveGraphColoring(v + 1, m);
+        }
 
         for (int c = 1; c <= m; c++){
             if (isSafe(v, c)){
@@ -36,15 +53,19 @@ public class GraphColoringBacktracking{
         long startTime = System.nanoTime(); 
 
         if (solveGraphColoring(0, m)){
+            solutionFound = true;
             System.out.println("\nSolution Exists: Color Assignment\n");
             for (int i = 0; i < V; i++)
                 System.out.println("Vertex " + (i) + " -> Color " + colors[i]);
         }else{
+            solutionFound = false;
             System.out.println("\nNo solution exists.");
         }
 
         long endTime = System.nanoTime();
+        executionTime = endTime - startTime / 1e6;
         System.out.println("\nExecution Time: " + (endTime - startTime / 1e6 + " ms"));
+        System.out.println("Final Color Array (Backtracking): " + Arrays.toString(colors));
     }
 
     public static void main(String[] args){
@@ -80,4 +101,25 @@ public class GraphColoringBacktracking{
         graphColoring.colorGraph(m);
         scn.close();
     }
+
+    public int[][] getGraph() {
+        return graph;
+    }
+
+    public int[] getColors() {
+        return colors;
+    }
+
+    public double getExecutionTime() {
+        return executionTime;
+    }
+
+    public void setGraph(int[][] graph) {
+        this.graph = graph;
+    }
+
+    public boolean isSolutionFound() {
+        return solutionFound;
+    }
+
 }
