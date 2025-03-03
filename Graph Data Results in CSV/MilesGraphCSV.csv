@@ -1,0 +1,6 @@
+File Name,No. of Vertices,No. of Edges,BA Chromatic Number,BA Runtime (ms),GA Chromatic Number,GA Runtime (ms),DP Chromatic Number,DP Runtime (ms)
+miles1000,128,6432,44,0.4618,44,0.0455,44,0.0918
+miles1500,128,10396,76,0.7188,76,0.0645,76,0.2216
+miles250,128,774,9,2.0641,9,0.0171,9,0.1163
+miles500,128,2340,22,0.4665,22,0.0216,22,0.0233
+miles750,128,4226,34,1.2451,34,0.0277,34,0.0538
