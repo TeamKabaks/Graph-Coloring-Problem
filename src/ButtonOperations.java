@@ -1,8 +1,10 @@
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -97,14 +99,14 @@ public class ButtonOperations implements ActionListener {
             graphColoring.addEdge(u, v);
         }
     
-        graphColoring.greedyColoring(numColors);
+        graphColoring.greedyColoring();
 
         // Retrieve and apply colors to GraphPanel
         int[] colorArray = graphColoring.getColors();
         graphPanel.setNodeColors(colorArray);
         setAlgoLabel("Greedy Algorithm");
         setExecutionTimeLabel(graphColoring.getExecutionTime());
-        setStatusLabel(graphColoring.isSolutionFound());
+        //setStatusLabel(graphColoring.isSolutionFound());
         setMinColorLabel(graphColoring.getMinimumColors());
         setNumVerticesLabel();
         setNumEdgesLabel();
@@ -199,11 +201,13 @@ public class ButtonOperations implements ActionListener {
                 int result = fileChooser.showOpenDialog(null);
                 if (result == JFileChooser.APPROVE_OPTION) {
                     File[] selectedFiles = fileChooser.getSelectedFiles();
-                    processColFiles(selectedFiles, selectedFiles.length);
+                    int processed = processColFiles(selectedFiles, selectedFiles.length);
         
-                    // Show confirmation message after processing
-                    JOptionPane.showMessageDialog(null, "Graph Coloring Data Saved to CSV", 
-                                                  "Success", JOptionPane.INFORMATION_MESSAGE);
+                    // Show detailed confirmation message after processing
+                    JOptionPane.showMessageDialog(null, 
+                            "Successfully processed " + processed + " out of " + 
+                            selectedFiles.length + " files.\nResults saved to graph_coloring_results.csv", 
+                            "Processing Complete", JOptionPane.INFORMATION_MESSAGE);
                 }
             }
         });
@@ -307,84 +311,217 @@ public class ButtonOperations implements ActionListener {
         }
     }
 
-    public void processColFiles(File[] selectedFiles, int numFiles) {
-        String csvHeader = "File Name,No. of Vertices,No. of Edges,BA Chromatic Number,BA Runtime (ms),GA Chromatic Number,GA Runtime (ms),DP Chromatic Number,DP Runtime (ms)\n";
-        File csvFile = new File("graph_coloring_results.csv");
-
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
-            writer.write(csvHeader);
-
-            for (File file : selectedFiles) {
-                String content = new String(java.nio.file.Files.readAllBytes(file.toPath()));
-            
-                // ===== Parse .col File =====
-                String fileName = file.getName().replace(".col", "");
-                int numVertices = 0, numEdges = 0;
-                Set<Integer> vertices = new TreeSet<>();
-                List<String[]> edgesList = new ArrayList<>();
-
-                String[] lines = content.split("\\n");
-                for (String line : lines) {
-                    line = line.trim();
-                    if (line.startsWith("p edge")) {
-                        String[] parts = line.split(" ");
-                        numVertices = Integer.parseInt(parts[2]);
-                        numEdges = Integer.parseInt(parts[3]);
-                    } else if (line.startsWith("e ")) {
-                        String[] parts = line.substring(2).split(" ");
-                        int v1 = Integer.parseInt(parts[0]);
-                        int v2 = Integer.parseInt(parts[1]);
-                        vertices.add(v1);
-                        vertices.add(v2);
-                        edgesList.add(new String[]{String.valueOf(v1), String.valueOf(v2)});
-                    }
-                }
+    /**
+ * Process multiple .col files and analyze them with different graph coloring algorithms
+ * 
+ * @param selectedFiles Array of files to process
+ * @param numFiles Number of files selected (not used, but kept for backward compatibility)
+ * @return Number of successfully processed files
+ */
+public int processColFiles(File[] selectedFiles, int numFiles) {
+    if (selectedFiles == null || selectedFiles.length == 0) {
+        System.out.println("No files provided for processing.");
+        return 0;
+    }
+    
+    String csvHeader = "File Name,No. of Vertices,No. of Edges,BA Chromatic Number,BA Runtime (ms)," +
+                      "GA Chromatic Number,GA Runtime (ms),DP Chromatic Number,DP Runtime (ms)\n";
+    File csvFile = new File("graph_coloring_results.csv");
+    
+    int successfullyProcessed = 0;
+    
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
+        writer.write(csvHeader);
         
-                // ===== Run Backtracking Algorithm =====
-                GraphColoringBacktracking ba = new GraphColoringBacktracking(numVertices, numEdges);
-            
-                for (String[] edge : edgesList) {
-                    ba.getGraph()[Integer.parseInt(edge[0]) - 1][Integer.parseInt(edge[1]) - 1] = 1;
-                    ba.getGraph()[Integer.parseInt(edge[1]) - 1][Integer.parseInt(edge[0]) - 1] = 1;
+        for (File file : selectedFiles) {
+            try {
+                // Validate file extension
+                if (!file.getName().toLowerCase().endsWith(".col")) {
+                    System.out.println("Skipping non-.col file: " + file.getName());
+                    continue;
                 }
-                ba.colorGraph(numVertices);
-                baRuntime = ba.getExecutionTime();
-                int baChromatic = ba.getMinimumColors();
-        
-                // ===== Run Greedy Algorithm =====
-                GraphColoringGreedy ga = new GraphColoringGreedy(numVertices);
-                for (String[] edge : edgesList) {
-                    ga.addEdge(Integer.parseInt(edge[0]) - 1, Integer.parseInt(edge[1]) - 1);
-                }
-                ga.greedyColoring(numVertices);
-                gaRuntime = ga.getExecutionTime();
-                int gaChromatic = ga.getMinimumColors();
-
                 
-                // ===== Run Dynamic Programming =====
-                GraphColoringDP dp = new GraphColoringDP(numVertices, numVertices);
-                for (String[] edge : edgesList) {
-                    dp.addEdge(Integer.parseInt(edge[0]) - 1, Integer.parseInt(edge[1]) - 1);
+                System.out.println("Processing file: " + file.getName());
+                
+                // Parse the .col file
+                ColFileData graphData = parseColFile(file);
+                if (graphData == null) {
+                    System.out.println("Failed to parse file: " + file.getName());
+                    continue;
                 }
-                dp.colorGraph();
-                dpRuntime = dp.getExecutionTime();
-                int dpChromatic = dp.getMinimumColors();
-
-                // ===== Write to CSV =====
+                
+                // Extract data
+                String fileName = file.getName().replace(".col", "");
+                int numVertices = graphData.numVertices;
+                int numEdges = graphData.numEdges;
+                List<String[]> edgesList = graphData.edgesList;
+                
+                // Run Backtracking Algorithm
+                System.out.println("  Running Backtracking Algorithm...");
+                int baChromatic = -1;
+                baRuntime = -1;
+                try {
+                    GraphColoringBacktracking ba = new GraphColoringBacktracking(numVertices, numEdges);
+                    
+                    for (String[] edge : edgesList) {
+                        int v1 = Integer.parseInt(edge[0]) - 1; // Convert to 0-indexed
+                        int v2 = Integer.parseInt(edge[1]) - 1; // Convert to 0-indexed
+                        ba.getGraph()[v1][v2] = 1;
+                        ba.getGraph()[v2][v1] = 1;
+                    }
+                    
+                    ba.colorGraph(numVertices);
+                    baRuntime = ba.getExecutionTime();
+                    baChromatic = ba.getMinimumColors();
+                } catch (Exception e) {
+                    System.err.println("Error in Backtracking Algorithm: " + e.getMessage());
+                }
+                
+                // Run Greedy Algorithm
+                System.out.println("  Running Greedy Algorithm...");
+                int gaChromatic = -1;
+                gaRuntime = -1;
+                try {
+                    GraphColoringGreedy ga = new GraphColoringGreedy(numVertices);
+                    
+                    for (String[] edge : edgesList) {
+                        int v1 = Integer.parseInt(edge[0]) - 1; // Convert to 0-indexed
+                        int v2 = Integer.parseInt(edge[1]) - 1; // Convert to 0-indexed
+                        ga.addEdge(v1, v2);
+                    }
+                    
+                    ga.greedyColoring();
+                    gaRuntime = ga.getExecutionTime();
+                    gaChromatic = ga.getMinimumColors();
+                } catch (Exception e) {
+                    System.err.println("Error in Greedy Algorithm: " + e.getMessage());
+                }
+                
+                // Run Dynamic Programming
+                System.out.println("  Running Dynamic Programming Algorithm...");
+                int dpChromatic = -1;
+                dpRuntime = -1;
+                try {
+                    // Assuming we use numVertices as an initial upper bound for colors
+                    GraphColoringDP dp = new GraphColoringDP(numVertices, numVertices);
+                    
+                    for (String[] edge : edgesList) {
+                        int v1 = Integer.parseInt(edge[0]) - 1; // Convert to 0-indexed
+                        int v2 = Integer.parseInt(edge[1]) - 1; // Convert to 0-indexed
+                        dp.addEdge(v1, v2);
+                    }
+                    
+                    dp.colorGraph();
+                    dpRuntime = dp.getExecutionTime();
+                    dpChromatic = dp.getMinimumColors();
+                } catch (Exception e) {
+                    System.err.println("Error in Dynamic Programming Algorithm: " + e.getMessage());
+                }
+                
+                // Write results to CSV
                 String csvRow = String.format("%s,%d,%d,%d,%.4f,%d,%.4f,%d,%.4f\n",
-                    fileName, numVertices, numEdges, 
-                    baChromatic, baRuntime, 
-                    gaChromatic, gaRuntime, 
+                    fileName, numVertices, numEdges,
+                    baChromatic, baRuntime,
+                    gaChromatic, gaRuntime,
                     dpChromatic, dpRuntime);
                 writer.write(csvRow);
-
-                System.out.println("Processed file: " + fileName);
+                
+                successfullyProcessed++;
+                System.out.println("Successfully processed: " + fileName);
+            } catch (Exception e) {
+                System.err.println("Error processing file " + file.getName() + ": " + e.getMessage());
+                e.printStackTrace();
             }
-            System.out.println("Results saved to " + csvFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+        
+        System.out.println("Results saved to " + csvFile.getAbsolutePath());
+        return successfullyProcessed;
+    } catch (IOException e) {
+        System.err.println("Error writing to CSV file: " + e.getMessage());
+        e.printStackTrace();
+        return successfullyProcessed;
     }
+}
+
+/**
+ * Helper class to hold parsed data from .col files
+ */
+private static class ColFileData {
+    public int numVertices;
+    public int numEdges;
+    public List<String[]> edgesList;
+    
+    public ColFileData(int numVertices, int numEdges, List<String[]> edgesList) {
+        this.numVertices = numVertices;
+        this.numEdges = numEdges;
+        this.edgesList = edgesList;
+    }
+}
+
+/**
+ * Parse a .col file into structured data
+ * 
+ * @param file The .col file to parse
+ * @return A ColFileData object containing the parsed graph information
+ */
+private ColFileData parseColFile(File file) throws IOException {
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line;
+        int numVertices = 0;
+        int numEdges = 0;
+        List<String[]> edgesList = new ArrayList<>();
+        Set<Integer> vertices = new TreeSet<>();
+        
+        // First pass: get graph dimensions and edges
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (line.isEmpty() || line.startsWith("c")) {
+                // Skip comments and empty lines
+                continue;
+            } else if (line.startsWith("p edge")) {
+                String[] parts = line.split("\\s+");
+                if (parts.length < 4) {
+                    throw new IllegalArgumentException("Invalid p edge line format");
+                }
+                numVertices = Integer.parseInt(parts[2]);
+                numEdges = Integer.parseInt(parts[3]);
+            } else if (line.startsWith("e ")) {
+                String[] parts = line.substring(2).trim().split("\\s+");
+                if (parts.length < 2) {
+                    throw new IllegalArgumentException("Invalid edge line format: " + line);
+                }
+                int v1 = Integer.parseInt(parts[0]);
+                int v2 = Integer.parseInt(parts[1]);
+                
+                // Validate vertex indices
+                if (v1 < 1 || v1 > numVertices || v2 < 1 || v2 > numVertices) {
+                    System.err.println("Warning: Invalid vertex indices: " + v1 + ", " + v2 + 
+                                      " (exceeds vertex count: " + numVertices + ")");
+                    // Still add them as we may want to process invalid files
+                }
+                
+                vertices.add(v1);
+                vertices.add(v2);
+                edgesList.add(new String[]{String.valueOf(v1), String.valueOf(v2)});
+            }
+        }
+        
+        // Validate dimensions
+        if (numVertices <= 0) {
+            throw new IllegalArgumentException("Invalid graph: No vertices defined");
+        }
+        
+        // Validate edge count
+        if (edgesList.size() != numEdges) {
+            System.err.println("Warning: Expected " + numEdges + " edges but found " 
+                + edgesList.size() + " in file " + file.getName());
+        }
+        
+        return new ColFileData(numVertices, numEdges, edgesList);
+    } catch (NumberFormatException e) {
+        throw new IOException("Error parsing numeric values: " + e.getMessage(), e);
+    }
+}
 
     // Getters for buttons
     public JButton getBacktrackingBtn() {

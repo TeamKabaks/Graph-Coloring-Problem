@@ -1,0 +1,6 @@
+File Name,No. of Vertices,No. of Edges,BA Chromatic Number,BA Runtime (ms),GA Chromatic Number,GA Runtime (ms),DP Chromatic Number,DP Runtime (ms)
+anna,138,986,12,0.3060,11,0.4015,12,0.0364
+david,87,812,12,0.2075,11,0.2743,12,0.0337
+homer,561,3258,15,0.5499,13,1.4195,15,0.0831
+huck,74,602,11,0.1168,11,0.1626,11,0.0071
+jean,80,508,10,0.1306,10,0.1575,10,0.0093
