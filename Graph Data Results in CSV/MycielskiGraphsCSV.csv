@@ -1,6 +1,0 @@
-File Name,No. of Vertices,No. of Edges,BA Chromatic Number,BA Runtime (ms),GA Chromatic Number,GA Runtime (ms),DP Chromatic Number,DP Runtime (ms)
-myciel3,11,20,4,0.2733,4,0.0023,4,0.0025
-myciel4,23,71,5,0.2701,5,0.0028,5,0.0022
-myciel5,47,236,6,0.2281,6,0.0041,6,0.0038
-myciel6,95,755,7,0.2682,7,0.0083,7,0.0121
-myciel7,191,2360,8,0.4570,8,0.0263,8,0.0200
